@@ -1,62 +1,77 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, request, jsonify
 import requests
 import os
 from dotenv import load_dotenv
-import google.generativeai as genai
+import google.generativeai as gemini_ai
 
 load_dotenv()
 
 app = Flask(__name__)
 
 # Configure Google Gemini API Key
-genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
+gemini_ai.configure(api_key=os.getenv('GEMINI_API_KEY'))
 REPLIERS_KEY = os.getenv('REPLIERS_KEY')
 
-@app.route('/chat', methods=['POST'])
-def chat():
-    user_input = request.form['message']
 
-    # Initialize Gemini AI
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    chat_session = model.start_chat(history=[])
-    response = chat_session.send_message(user_input)
-    
-    # Example of handling user requirements
-    if 'bedroom' in user_input.lower() and 'house' in user_input.lower():
-        listings = get_real_estate_listings(user_input)
-        response_text = f"Here are some listings that match your criteria: {listings}"
-    else:
-        response_text = response.text
-    
-    return jsonify({'response': response_text})
+@app.route('/property_chat', methods=['GET', 'POST'])
+def property_chat():
+    if request.method == 'POST':
+        data = request.get_json()
+        user_input = data.get('message')
 
-def get_real_estate_listings(user_input):
-    # Parse user_input to get parameters for Repliers API
-    # This is a simplified example; actual implementation will need more complex parsing
+        # Make the Repliers API call
+        response_from_api = get_repliers_data(user_input)
+
+        # Integrate the response into a conversation with the Gemini model
+        if response_from_api:
+            prompt = f"User Query: {user_input}\n\nAPI Response: {response_from_api}"
+            response = gemini_ai.chat(prompt=prompt)
+            chatbot_response = response['messages'][0]['content']  # Adjust based on the actual response
+        else:
+            chatbot_response = "Sorry, I couldn't retrieve any data for that query."
+
+        return jsonify({'response': chatbot_response})
+    
+    return "This route only accepts POST requests."
+
+
+def get_repliers_data(user_query):
+    """Function to query the Repliers API based on user's input"""
+    API_ENDPOINT = 'https://api.repliers.io/listings'
+
+    # Set up basic parameters for the API call (adjust as needed)
     params = {
-        'numBedrooms': extract_number(user_input),
-        'propertyType': 'rental'
+        'cluster': 'true',
+        'minPrice': '1',
+        'maxPrice': '10000000',
+        'numBedrooms': '1',
+        'numBathrooms': '1',
+        'propertyType': 'House',  # Adjust dynamically based on user input
     }
-    
+
     headers = {
         "accept": "application/json",
         "content-type": "application/json",
-        "REPLIERS-API-KEY": REPLIERS_KEY
+        "Authorization": f"Bearer {REPLIERS_KEY}"  # Make sure this matches the API's expected header format
     }
 
-    api_url = f'https://api.repliers.io/listings'
     try:
-        response = requests.get(api_url, headers=headers, params=params)
-        response.raise_for_status()
-        listings = response.json()
-        # Process listings data as needed
-        return listings
-    except requests.RequestException as e:
-        return f'Error fetching listings: {str(e)}'
+        response = requests.get(API_ENDPOINT, headers=headers, params=params)
+        response.raise_for_status()  # Raise an exception for 4xx/5xx errors
+        data = response.json()
 
-def extract_number(text):
-    match = re.search(r'\d+', text)
-    return match.group() if match else None
+        # Process the API data for the chatbot to use
+        if 'listings' in data and len(data['listings']) > 0:
+            listings = data['listings']
+            first_listing = listings[0]  # Get the first listing as an example
+            return f"Listing found: {first_listing['address']}, Price: ${first_listing['listPrice']}, Bedrooms: {first_listing['details']['numBedrooms']}, Bathrooms: {first_listing['details']['numBathrooms']}"
+        else:
+            return None
+
+    except requests.RequestException as e:
+        print(f"Error fetching data from Repliers API: {e}")
+        return None
+
 
 if __name__ == '__main__':
     app.run(debug=True)
