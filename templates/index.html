@@ -28,6 +28,15 @@
                 let chatBox = document.getElementById("chat-box");
                 chatBox.innerHTML += `<p><strong>You:</strong> ${userMessage}</p>`;
                 chatBox.innerHTML += `<p><strong>Bot:</strong> ${data.response}</p>`;
+
+                // Display listings if available
+                if (data.listings) {
+                    chatBox.innerHTML += "<h3>Property Listings:</h3>";
+                    data.listings.forEach(listing => {
+                        chatBox.innerHTML += `<p>${listing.address}</p>`;
+                    });
+                }
+
                 document.getElementById("user-input").value = '';  // Clear input
             });
         }
