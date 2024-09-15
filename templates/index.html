@@ -5,6 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Real Estate Chat Assistant</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        #chat-container {
+            width: 60%;
+            margin: auto;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        #chat-box {
+            height: 400px;
+            overflow-y: scroll;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        #user-input {
+            width: 80%;
+            padding: 10px;
+        }
+        button {
+            padding: 10px 15px;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
     <div id="chat-container">
@@ -29,15 +53,17 @@
                 chatBox.innerHTML += `<p><strong>You:</strong> ${userMessage}</p>`;
                 chatBox.innerHTML += `<p><strong>Bot:</strong> ${data.response}</p>`;
 
-                // Display listings if available
-                if (data.listings) {
-                    chatBox.innerHTML += "<h3>Property Listings:</h3>";
-                    data.listings.forEach(listing => {
-                        chatBox.innerHTML += `<p>${listing.address}</p>`;
+                // Display listings with Google Maps links if available
+                if (data.listings && data.listings.listings) {
+                    chatBox.innerHTML += "<h3>Property Listings with Location Links:</h3>";
+                    data.listings.listings.forEach(listing => {
+                        let locationLink = listing.location_link !== 'Location not available' ? `<a href="${listing.location_link}" target="_blank">View on Google Maps</a>` : 'Location not available';
+                        chatBox.innerHTML += `<p>Property: ${listing.address.fullAddress} - ${locationLink}</p>`;
                     });
                 }
 
                 document.getElementById("user-input").value = '';  // Clear input
+                chatBox.scrollTop = chatBox.scrollHeight;  // Scroll to bottom
             });
         }
     </script>
