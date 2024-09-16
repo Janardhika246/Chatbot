@@ -1,126 +1,78 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, request, jsonify
 import requests
 import os
+from flask import Flask, request, render_template, jsonify
 import google.generativeai as genai
 from dotenv import load_dotenv
+import google.generativeai as gemini_ai
 
-load_dotenv()
+load_dotenv()  # Load environment variables from .env
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
-API_KEY = os.getenv('REPLIERS_KEY')
-API_ENDPOINT = 'https://api.repliers.io/listings'
+# Configure API keys
+gemini_ai.configure(api_key=os.getenv('GEMINI_API_KEY'))
+REPLIERS_KEY = os.getenv('REPLIERS_KEY')
 
-# Configure Google Gemini API Key
-genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
+@app.route('/property_chat', methods=['POST'])
+def property_chat():
+    if request.method == 'POST':
+        data = request.get_json()
+        user_input = data.get('message')
 
-@app.route('/', methods=['GET'])
+        # Get data from Repliers API based on user query
+        repliers_response = get_repliers_data(user_input)
+
+        # Generate a chat response using the Gemini model, including Repliers API data
+        if repliers_response:
+            prompt = f"User Query: {user_input}\n\nReal Estate Info: {repliers_response}"
+            response = genai.chat(prompt=prompt)
+            chatbot_response = response['messages'][0]['content']  # Adjust based on actual response
+        else:
+            chatbot_response = "Sorry, I couldn't retrieve any real estate data for that query."
+
+        return jsonify({'response': chatbot_response})
+
+    return "This route only accepts POST requests."
+
+
+def get_repliers_data(user_query):
+    """Queries Repliers API based on the user input"""
+    API_ENDPOINT = 'https://api.repliers.io/listings'
+
+    # Extract search filters from user query (you can improve parsing to make it more dynamic)
+    params = {
+        'maxPrice': '1000000',  # Example default, modify dynamically based on user query
+        'city': 'New York',  # Adjust based on user input parsing
+        'minBeds': '3',  # Example minimum bedrooms, adjust as per user query
+    }
+
+    headers = {
+        "Authorization": f"Bearer {REPLIERS_KEY}",
+        "accept": "application/json"
+    }
+
+    try:
+        response = requests.get(API_ENDPOINT, headers=headers, params=params)
+        response.raise_for_status()  # Raise an exception for 4xx/5xx errors
+        data = response.json()
+
+        # Process the data and extract useful details
+        if 'listings' in data and len(data['listings']) > 0:
+            first_listing = data['listings'][0]
+            return f"Listing: {first_listing['address']}, Price: ${first_listing['listPrice']}, Bedrooms: {first_listing['beds']}, Bathrooms: {first_listing['baths']}"
+        else:
+            return None
+    except requests.RequestException as e:
+        print(f"Error fetching data from Repliers API: {e}")
+        return None
+
+
+@app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/get_response', methods=['POST'])
-def get_response():
-    user_input = request.json.get('message')
-
-    # Chat with Gemini AI
-    ai_response = chat_with_gemini(user_input)
-
-    # Extract filters from user input
-    filters = parse_filters(user_input)
-    if filters:
-        listings = fetch_property_listings(**filters)
-        print("Fetched Listings:", listings)  # Debug statement
-
-        if listings and listings.get('listings'):
-            listings_with_links = generate_location_links(listings)
-            return jsonify({
-                'response': ai_response,
-                'listings': listings_with_links
-            })
-        else:
-            return jsonify({
-                'response': 'No results found. Try another',
-                'listings': []
-            })
-
-    # Default response if no property query is detected
-    return jsonify({'response': ai_response, 'listings': []})
-
-def chat_with_gemini(user_input):
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    chat_session = model.start_chat(history=[])
-    ai_response = chat_session.send_message(user_input)
-    return ai_response.text
-
-def parse_filters(user_input):
-    import re
-
-    filters = {}
-    
-    # Basic pattern matching (You may need to enhance this)
-    price_match = re.search(r'amount\s*should\s*be\s*(\d+)', user_input, re.IGNORECASE)
-    bedroom_match = re.search(r'(\d+)\s*bedroom', user_input, re.IGNORECASE)
-    bathroom_match = re.search(r'(\d+)\s*bathroom', user_input, re.IGNORECASE)
-    city_match = re.search(r'in\s*(\w+)', user_input, re.IGNORECASE)  # Simple city extraction
-
-    if price_match:
-        filters['max_price'] = int(price_match.group(1))
-    if bedroom_match:
-        filters['num_bedrooms'] = int(bedroom_match.group(1))
-    if bathroom_match:
-        filters['num_bathrooms'] = int(bathroom_match.group(1))
-    if city_match:
-        filters['city'] = city_match.group(1)
-
-    # Set default values if not provided
-    filters.setdefault('min_price', 0)
-    filters.setdefault('num_bedrooms', 1)
-    filters.setdefault('num_bathrooms', 1)
-    
-    return filters
-
-def fetch_property_listings(min_price, max_price, num_bedrooms, num_bathrooms, city):
-    headers = {
-        "accept": "application/json",
-        "content-type": "application/json",
-        "REPLIERS-API-KEY": API_KEY
-    }
-
-    params = {
-        'minPrice': min_price,
-        'maxPrice': max_price,
-        'numBedrooms': num_bedrooms,
-        'numBathrooms': num_bathrooms,
-        'city': city,
-        'hasImages': True
-    }
-
-    result_fields = ("address.*,map.*,mlsNumber,listPrice,originalPrice,images[1],"
-                     "details.numBedrooms,details.numBathrooms,details.sqft,"
-                     "details.numGarageSpaces,details.propertyType,details.garage,"
-                     "lastStatus,lot.*,resource")
-
-    api_url = f'{API_ENDPOINT}?fields={result_fields}'
-
-    try:
-        response = requests.get(api_url, headers=headers, params=params)
-        response.raise_for_status()
-        return response.json()
-    except requests.RequestException as e:
-        return {'error': f'Failed to fetch listings. Error: {str(e)}'}
-
-def generate_location_links(listings):
-    for listing in listings.get('listings', []):
-        latitude = listing.get('map', {}).get('latitude')
-        longitude = listing.get('map', {}).get('longitude')
-
-        if latitude and longitude:
-            listing['location_link'] = f"https://www.google.com/maps?q={latitude},{longitude}"
-        else:
-            listing['location_link'] = 'Location not available'
-    
-    return listings
 
 if __name__ == '__main__':
     app.run(debug=True)
