@@ -6,35 +6,51 @@
     <title>Real Estate Chat Assistant</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <style>
+        body, html {
+            height: 100%;  /* Set full height */
+            margin: 0;     /* Remove default margin */
+            font-family: Arial, sans-serif; /* Add a default font */
+        }
         #chat-container {
-            width: 60%;
-            margin: auto;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
+            width: 100%;   /* Full width */
+            height: 100%;  /* Full height */
+            display: flex;
+            flex-direction: column; /* Stack elements vertically */
+            padding: 20px;
+            box-sizing: border-box; /* Include padding in height and width */
+            background-color: #f4f4f4; /* Light background color */
         }
         #chat-box {
-            height: 400px;
+            flex: 1; /* Take up remaining space */
             overflow-y: scroll;
             border: 1px solid #ddd;
             padding: 10px;
+            background-color: white; /* White background for the chat box */
             margin-bottom: 10px;
         }
         #user-input {
             width: 80%;
             padding: 10px;
+            margin-right: 10px; /* Space between input and button */
         }
         button {
             padding: 10px 15px;
             cursor: pointer;
+        }
+        #clear-button {
+            background-color: #f44336; /* Red color for the clear button */
+            color: white;
         }
     </style>
 </head>
 <body>
     <div id="chat-container">
         <div id="chat-box"></div>
-        <input type="text" id="user-input" placeholder="Ask about properties...">
-        <button onclick="sendMessage()">Send</button>
+        <div style="display: flex; margin-top: 10px;"> <!-- Flexbox for input and buttons -->
+            <input type="text" id="user-input" placeholder="Ask about properties...">
+            <button onclick="sendMessage()">Send</button>
+            <button id="clear-button" onclick="clearMessages()">Clear Messages</button>
+        </div>
     </div>
 
     <script>
@@ -66,6 +82,21 @@
                 chatBox.scrollTop = chatBox.scrollHeight;  // Scroll to bottom
             });
         }
+
+        function clearMessages() {
+            fetch('/clear-session', {
+                method: 'GET',
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert(data.message);
+                    window.location.href = '/chat';
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+
     </script>
 </body>
 </html>

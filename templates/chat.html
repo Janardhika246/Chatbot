@@ -1,0 +1,517 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real Estate Chat Interface</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/aquawolf04/font-awesome-pro@5cd1511/css/all.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+          
+            --font-family:  "Plus Jakarta Sans", sans-serif;;
+        }
+
+        body {
+            font-family: "Plus Jakarta Sans", sans-serif!important;
+            /* background-color: #fff; */
+        }
+
+        
+        .btn-outline-secondary {
+            background-color: var(--primary-color);
+            color: #fff;
+            border: none;
+        }
+
+        .card {
+            border: 1px solid #e0e0e0;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+
+        .card img {
+            width: 100%;
+            height: 8rem;
+            object-fit: cover;
+        }
+
+        .card-body {
+            padding: 0.8rem;
+        }
+
+        .card-subtitle {
+            color: var(--muted-text-color);
+            font-size: 1rem;
+        }
+
+        .card-text {
+            color: var(--text-color);
+            margin-bottom: auto;
+            font-size: 0.875rem;
+        }
+
+    </style>
+
+
+    <style>
+        .card-custom {
+            cursor: pointer;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            transition: transform 0.3s;
+        }
+
+        .card-custom:hover {
+            transform: scale(1.03);
+        }
+
+        .bg-badge {
+            position: absolute;
+            top:0.3rem;
+            left:0.3rem;
+            background-color: rgb(86, 248, 86);
+            color: white;
+            padding: 0.3rem 0.6rem;
+            border-radius: 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        .card-img-top {
+            height: 19rem; /* Fixed height for better alignment */
+            object-fit: cover; /* Ensures the image covers the area without distortion */
+        }
+
+        .icon-text {
+            vertical-align: middle;
+            margin-right: 1rem;
+        }
+
+        .text-small {
+            font-size: 0.8rem;
+        }
+
+
+        .card{
+        
+    background-color: unset!important;
+        }
+        
+        .modal-content{
+            /* background-color: unset!important; */
+            background-color: var(--adminuiux-bg-1);
+            border: 1px solid #e0e0e0;
+            border-radius: 0.5rem;
+        }
+
+        .navbar {
+            backdrop-filter:blur(10rem);
+        }
+        .navbar-toggler{
+           border: solid 0.5px var(--adminuiux-theme-1);
+
+        }
+    </style>
+
+    <style>
+      .container, .container-fluid, .container-lg, .container-md, .container-sm, .container-xl, .container-xxl {
+          padding-right: unset!important;
+          padding-left: unset!important;
+                }
+    </style>
+</head>
+<body>
+    <!-- Spinner -->
+<div id="spinner" class="d-none justify-content-center align-items-center" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(255, 255, 255, 0.8); z-index: 9999;">
+    <!-- <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div> -->
+</div>
+
+    <div class="card container-fluid" style="min-height: 100vh;">
+        
+
+        <div class="card-header d-flex justify-content-between">
+            <h1 class="mb-3">Real Estate AI Chat Assistant</h1>
+            <button class="btn btn-danger" onclick="clearMessages()">Clear Messages</button>
+        </div>
+        
+            <div class="card-body mb-2" id="chatThread">
+
+            </div>
+            
+            <div class="card-footer text-muted d-flex justify-content-start align-items-center p-3">
+                <img src="https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava3-bg.webp"
+                  alt="avatar 3" style="width: 20px; height: 100%;">
+                <input type="text" id="userInput" class="form-control form-control-sm"
+                  placeholder="Type message">
+                <!-- <a class="ms-1 text-muted" href=""><i class="fas fa-paperclip"></i></a> -->
+                <div class="ms-3" ><i class="fas fa-paper-plane"  onclick="sendMessage()"></i></div>
+                
+              </div>
+
+        <!-- Off-canvas container for properties -->
+        <div class="offcanvas offcanvas-end" tabindex="-1" id="propertiesCanvas" aria-labelledby="propertiesCanvasLabel">
+            <div class="offcanvas-header">
+                <h5 id="propertiesCanvasLabel">Property Listings</h5>
+                <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+            <div class="offcanvas-body" id="properties">
+                <!-- Property cards will be added here -->
+            </div>
+        </div>
+    </div>
+
+    
+ 
+    <!-- Bootstrap JS and Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+
+    <script>
+        function clearMessages() {
+            fetch('/clear-session', {
+                method: 'GET',
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Clear the chat thread in the UI
+                    // const chatThread = document.getElementById('chatThread');
+                    // chatThread.innerHTML = ''; // Clear the chat content
+                    alert(data.message); // Optional: Show a message to the user
+                    window.location.href = '/chat';
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+
+
+    </script>
+
+
+    <script>
+
+function applyFilters(filters) {
+
+    console.log('Applying filters:', filters);
+     // Show spinner
+     document.getElementById('spinner').classList.remove('d-none');
+
+        fetch('/filteredlistings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(filters)
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Filtered listings:', data);
+            if (data.length > 0) {
+            displayProperties(data);
+            // Hide spinner after the response is received
+                 document.getElementById('spinner').classList.add('d-none');
+            let propertiesCanvas = new bootstrap.Offcanvas(document.getElementById('propertiesCanvas'));
+            propertiesCanvas.show();
+        }
+            // Handle display of filtered listings here or notify the user
+        })
+        .catch(error => console.error('Error:', error));
+    }
+        window.onload = function() {
+            // Assume chat history is passed as a JSON-encoded string in a hidden input field
+            var chatHistory = [];
+            if (chatHistory) {
+                chatHistory.forEach(function(chat) {
+                    addToChatThread2(chat.content, chat.role === 'user' ? 'You' : 'Assistant');
+                });
+        }
+        };
+        function addToChatThread2(message, sender) {
+        const chatThread = document.getElementById('chatThread');
+        const messageElement = document.createElement('div');
+        messageElement.className = sender === 'You' ? 'd-flex flex-row justify-content-end mb-4' : 'd-flex flex-row justify-content-start mb-4';
+        const messageText = document.createElement('p');
+        messageText.className = sender === 'You' ? 'small p-2 me-3 mb-1 text-white rounded-3 bg-primary' : 'small p-2 ms-3 mb-1 text-white rounded-3 bg-secondary';
+        messageText.textContent = message;
+
+        // Check if message is JSON and the sender is 'Assistant'
+        if (sender === 'Assistant' && isJsonString(message)) {
+            messageText.style.cursor = 'pointer';
+            messageText.style.textDecoration = 'underline';
+            messageText.onclick = function() {
+                console.log('JSON message:', message);
+                console.log('JSON double:', message.replace(/'/g, "\""));
+
+                console.log('JSON parsed:',JSON.parse( message.replace(/'/g, "\"")) );
+                applyFilters(JSON.parse( message.replace(/'/g, "\""))); // Convert single quotes to double quotes for valid JSON
+            };
+        }
+
+        messageElement.appendChild(messageText);
+        chatThread.appendChild(messageElement);
+    }
+
+    function isJsonString(str) {
+        try {
+            JSON.parse(str.replace(/'/g, "\""));
+        } catch (e) {
+            return false;
+        }
+        return true;
+    }
+
+
+    </script>
+    
+    <script>
+   function sendMessage() {
+    const userInput = document.getElementById('userInput').value;
+     // Show spinner
+     document.getElementById('spinner').classList.remove('d-none');
+
+    fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userInput })
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Display chat messages
+        addToChatThread(userInput, 'You');
+        if (data.chatresponse) {
+            addToChatThread(data.chatresponse, 'Assistant');
+            // Hide spinner after the response is received
+        document.getElementById('spinner').classList.add('d-none');
+        }
+
+        // Handle properties display and toggle the offcanvas if properties are available
+        if (data.property_listings && data.property_listings.length > 0) {
+            displayProperties(data.property_listings);
+            addbuttontoshowproperties("show properties", "Assistant",data.arguments[0]);
+            // Hide spinner after the response is received
+        document.getElementById('spinner').classList.add('d-none');
+            let propertiesCanvas = new bootstrap.Offcanvas(document.getElementById('propertiesCanvas'));
+            propertiesCanvas.show();
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+function displayfilters(filter_params, element) {
+    if (filter_params) {
+        
+
+    }
+}
+
+function addbuttontoshowproperties(message, sender,filter_params) {
+    const chatThread = document.getElementById('chatThread');
+    var messageElement = document.createElement('button');
+    displayfilters(filter_params, messageElement);
+    messageElement.setAttribute('data-bs-toggle', 'offcanvas');
+    messageElement.setAttribute('data-bs-target', '#propertiesCanvas');
+    messageElement.className =  'btn btn-secondary rounded-pill d-flex flex-row justify-content-start mb-4';
+    // messageElement.innerHTML = `${message}`;
+    const filterElement = document.createElement('p');
+        filterElement.className = 'text-white text-small mb-1';
+        // for each key and value in filter params 
+        filterElement.innerText = 'Showing properties for: ';
+
+        // add each filter to the filter element
+        parameters = Object.entries(filter_params);
+
+        if (parameters.length === 0) {
+            filterElement.innerText = 'No filters applied';
+        }
+
+        filterElement.innerText +=  parameters.map(([key, value]) => `${key}: ${value}`);
+
+        
+        messageElement.appendChild(filterElement);
+
+    chatThread.appendChild(messageElement);
+    
+}
+function addToChatThread(message, sender) {
+    const chatThread = document.getElementById('chatThread');
+    const messageElement = document.createElement('div');
+    
+    messageElement.className = sender === 'You' ? 'd-flex flex-row justify-content-end mb-4' : 'd-flex flex-row justify-content-start mb-4';
+    const messageText = document.createElement('p');
+    messageText.className = sender === 'You' ? 'small p-2 me-3 mb-1 text-white rounded-3 bg-primary' : 'small p-2 ms-3 mb-1 rounded-3 bg-body-tertiary';
+    messageText.textContent = message;
+    messageElement.appendChild(messageText);
+    
+    // messageElement.textContent = `${sender}: ${message}`;
+    chatThread.appendChild(messageElement);
+}
+
+function displayProperties(properties) {
+    const responseArea = document.getElementById('properties');
+    responseArea.innerHTML = ''; // Clear previous responses
+
+    properties.forEach(listing => {
+        let priceHTML = listing.listPrice ? 
+            `<h5 class="card-title">$${listing.listPrice.toLocaleString()}</h5>` : 
+            `<h5 class="card-title">Price Unavailable</h5>`;
+        let statusClass = listing.lastStatus === 'New' ? 'bg-badge bg-success text-white' : 'bg-badge bg-warning text-white';
+        const cardHTML = `
+            <div class="col">
+                <div class="card mb-3" onclick="window.open('/property/${listing.mlsNumber}', '_blank');">
+                    <p class="${statusClass}">${listing.lastStatus}</p>
+                    <img src="https://cdn.repliers.io/${listing.images[0]}?class=small" class="card-img-top" alt="Property Image">
+                    <div class="card-body">
+                        ${priceHTML}
+                        <p class="card-subtitle mt-1 mb-1 text-muted">
+                            ${listing.address.streetNumber} ${listing.address.streetName}, ${listing.address.city}
+                        </p>
+                        <p class="card-text text-small">
+                            <i class="fas fa-bed icon-text"></i> ${listing.details.numBedrooms} | 
+                            <i class="fas fa-bath icon-text"></i> ${listing.details.numBathrooms} | 
+                            <i class="fas fa-car icon-text"></i> ${listing.details.numGarageSpaces}
+                            <span class="float-end text-muted">${listing.details.propertyType}</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        responseArea.innerHTML += cardHTML;
+    });
+}
+
+    </script>
+    <script>
+        
+function createOrUpdateAccordion(filters) {
+    // let accordion = document.getElementById('filterAccordion');
+    const chatThread = document.getElementById('chatThread');
+
+    // Check if the accordion already exists, if not, create it
+    // if (!accordion) {
+        accordion = document.createElement('div');
+        accordion.className = 'accordion';
+        // accordion.id = 'filterAccordion';
+        accordion.innerHTML = `
+                    <button class="btn btn-primary ms-3"  data-bs-toggle="offcanvas" data-bs-target="#propertiesCanvas" >show lisings</button>
+
+            <div class="accordion-item">
+                <div class="accordion-header" id="headingOne">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                            data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+                        expand to see details
+                    </button>
+                </div>
+                <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne">
+                    <div class="accordion-body">
+                        <!-- Dynamic filters will be added here -->
+                    </div>
+                </div>
+            </div>
+        `;
+        chatThread.appendChild(accordion); // Append the accordion to the chat thread
+    // }
+
+    const accordionBody = document.getElementById('collapseOne').getElementsByClassName('accordion-body')[0];
+    accordionBody.innerHTML = ''; // Clear previous filters
+
+    // Create input fields based on available filter params
+    if (filters.city) {
+        accordionBody.appendChild(createFilterInput('City', filters.city, 'text'));
+    }
+    if (filters.minBeds) {
+        accordionBody.appendChild(createFilterInput('Minimum Beds', filters.minBeds, 'number'));
+    }
+    if (filters.maxPrice) {
+        accordionBody.appendChild(createFilterInput('Maximum Price', filters.maxPrice, 'number'));
+    }
+
+    // Append Apply Filters Button
+    const applyButton = document.createElement('button');
+    applyButton.className = 'btn btn-primary';
+    applyButton.textContent = 'Apply Filters';
+    applyButton.onclick = applyFilters;
+    accordionBody.appendChild(applyButton);
+}
+
+function createFilterInput(label, value, type) {
+    const inputGroup = document.createElement('div');
+    const inputLabel = document.createElement('label');
+    const inputField = document.createElement('input');
+
+    inputGroup.className = 'mb-2';
+    inputLabel.textContent = label;
+    inputLabel.className = 'form-label';
+
+    inputField.type = type;
+    inputField.className = 'form-control';
+    inputField.value = value;
+    inputField.id = 'filter' + label.replace(/\s/g, '');
+
+    inputGroup.appendChild(inputLabel);
+    inputGroup.appendChild(inputField);
+
+    return inputGroup;
+}
+
+
+function createFilterInput(label, value, type) {
+    const inputGroup = document.createElement('div');
+    const inputLabel = document.createElement('label');
+    const inputField = document.createElement('input');
+    
+    inputGroup.className = 'mb-2';
+    inputLabel.textContent = label;
+    inputLabel.className = 'form-label';
+    
+    inputField.type = type;
+    inputField.className = 'form-control';
+    inputField.value = value;
+    inputField.id = 'filter' + label.replace(/\s/g, '');
+    
+    inputGroup.appendChild(inputLabel);
+    inputGroup.appendChild(inputField);
+
+    return inputGroup;
+}
+
+
+// function applyFilters() {
+//     const city = document.getElementById('filterCity').value;
+//     const minBeds = document.getElementById('filterMinimumBeds').value;
+//     const maxPrice = document.getElementById('filterMaximumPrice').value;
+
+//     fetch('/filteredlistings', {
+//         method: 'POST',
+//         headers: { 'Content-Type': 'application/json' },
+//         body: JSON.stringify({
+//             city: city,
+//             minBeds: parseInt(minBeds),
+//             maxPrice: parseInt(maxPrice)
+//         })
+//     })
+//     .then(response => response.json())
+//     .then(data => {
+//         if (data && data.length > 0) {
+//             displayProperties(data);
+//             let propertiesCanvas = new bootstrap.Offcanvas(document.getElementById('propertiesCanvas'));
+//             propertiesCanvas.show();
+//         } else {
+//             document.getElementById('properties').innerHTML = '<div class="alert alert-warning" role="alert">No properties found with the selected filters.</div>';
+//         }
+//     })
+//     .catch(error => console.error('Error:', error));
+// }
+
+    </script>
+</body>
+</html>
